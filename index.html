@@ -3,35 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Floor Plan Creator</title>
+    <title>Web Floor Plan Creator v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
-        /* สไตล์ตาราง 1 ช่อง = 1 ตารางเมตร (ขนาด 40px) */
         .grid-canvas {
             background-size: 40px 40px;
             background-image: linear-gradient(to right, #e5e7eb 1px, transparent 1px),
                               linear-gradient(to bottom, #e5e7eb 1px, transparent 1px);
         }
-        .draggable-object {
-            cursor: grab;
-            user-select: none;
-        }
-        .draggable-object:active {
-            cursor: grabbing;
-        }
-        .placed-object {
-            position: absolute;
-            cursor: move;
-            transition: transform 0.2s;
-        }
+        .draggable-object { cursor: grab; user-select: none; }
+        .draggable-object:active { cursor: grabbing; }
+        .placed-object { position: absolute; cursor: move; transition: transform 0.1s; }
+        .measurement-text { font-size: 12px; font-weight: bold; fill: #ef4444; background: white; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans h-screen flex flex-col overflow-hidden">
 
     <header class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md">
         <h1 class="text-xl font-bold flex items-center gap-2">
-            🏠 ระบบวาดแปลนบ้าน (1 ช่อง = 1 ตร.ม.)
+            🏠 ระบบวาดแปลนบ้าน (ลากลื่น + มีตลับเมตรวัดขนาด)
         </h1>
         <div class="flex items-center gap-4">
             <div class="flex items-center bg-indigo-700 rounded-lg p-1 gap-1">
@@ -43,7 +34,6 @@
                     + เพิ่มชั้น
                 </button>
             </div>
-            
             <button onclick="exportToPDF()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm shadow flex items-center gap-1 transition">
                 📄 เซฟเป็น PDF
             </button>
@@ -52,72 +42,71 @@
 
     <div class="flex flex-1 overflow-hidden">
         
-        <aside class="w-72 bg-white border-r border-gray-200 p-4 flex flex-col gap-6 overflow-y-auto shadow-inner">
+        <aside class="w-72 bg-white border-r border-gray-200 p-4 flex flex-col gap-5 overflow-y-auto shadow-inner">
             
             <div>
-                <h2 class="font-bold text-gray-700 border-b pb-2 mb-3 flex items-center gap-1">📐 เครื่องมือวาดห้อง/ผนัง</h2>
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="setTool('rect')" id="btn-rect" class="tool-btn p-3 border-2 border-gray-300 rounded-lg flex flex-col items-center bg-gray-50 hover:bg-indigo-50 hover:border-indigo-500 transition">
-                        <div class="w-8 h-6 border-2 border-gray-700 bg-gray-200 mb-1 rounded"></div>
-                        <span class="text-xs font-medium">สี่เหลี่ยม</span>
+                <h2 class="font-bold text-gray-700 border-b pb-2 mb-3 flex items-center gap-1">📐 เครื่องมือโครงสร้าง & วัดขนาด</h2>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button onclick="setTool('rect')" id="btn-rect" class="tool-btn p-2 border-2 border-gray-300 rounded-lg flex flex-col items-center bg-gray-50 hover:bg-indigo-50 hover:border-indigo-500 transition">
+                        <div class="w-8 h-5 border-2 border-indigo-600 bg-indigo-50 mb-1 rounded"></div>
+                        <span class="text-xs font-semibold">ห้องสี่เหลี่ยม</span>
                     </button>
-                    <button onclick="setTool('circle')" id="btn-circle" class="tool-btn p-3 border-2 border-gray-300 rounded-lg flex flex-col items-center bg-gray-50 hover:bg-indigo-50 hover:border-indigo-500 transition">
-                        <div class="w-7 h-7 border-2 border-gray-700 bg-gray-200 mb-1 rounded-full"></div>
-                        <span class="text-xs font-medium">วงกลม</span>
+                    <button onclick="setTool('circle')" id="btn-circle" class="tool-btn p-2 border-2 border-gray-300 rounded-lg flex flex-col items-center bg-gray-50 hover:bg-indigo-50 hover:border-indigo-500 transition">
+                        <div class="w-6 h-6 border-2 border-amber-500 bg-amber-50 mb-1 rounded-full"></div>
+                        <span class="text-xs font-semibold">วงกลม/เสา</span>
                     </button>
                 </div>
-                <div class="mt-2 text-center">
-                    <button onclick="setTool('select')" id="btn-select" class="w-full text-xs py-1 px-2 bg-indigo-100 text-indigo-700 font-bold rounded hover:bg-indigo-200 transition">
+                
+                <button onclick="setTool('ruler')" id="btn-ruler" class="tool-btn w-full p-2.5 mb-2 border-2 border-gray-300 rounded-lg flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 font-bold text-sm transition">
+                    📏 🛠️ เปิดโหมด "ตลับเมตรวัดระยะ"
+                </button>
+
+                <div class="flex gap-2">
+                    <button onclick="setTool('select')" id="btn-select" class="tool-btn flex-1 text-xs py-2 bg-indigo-100 text-indigo-700 font-bold rounded hover:bg-indigo-200 transition">
                         🖐️ โหมดเลือก/ย้ายวัตถุ
                     </button>
+                    <button onclick="clearRulers()" class="text-xs py-2 px-3 bg-gray-200 text-gray-700 font-bold rounded hover:bg-gray-300 transition">
+                        ❌ ล้างเส้นวัด
+                    </button>
                 </div>
-                <p class="text-[11px] text-gray-400 mt-2 text-center">*คลิกลากเมาส์บนตารางเพื่อวาดรูปทรง</p>
+                <p class="text-[11px] text-gray-400 mt-2 text-center">*ขณะลากจะปรับขนาดตามเมาส์ และจะ Snap เข้าล็อกตารางเมื่อปล่อยเมาส์</p>
             </div>
 
             <div>
                 <h2 class="font-bold text-gray-700 border-b pb-2 mb-3">🛋️ เฟอร์นิเจอร์ & Object</h2>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🚗', 'รถยนต์', 80, 160)">
-                        <span class="text-2xl">🚗</span>
-                        <span class="text-xs text-gray-600 mt-1">รถยนต์ (2x4 ม.)</span>
+                        <span class="text-2xl">🚗</span><span class="text-xs text-gray-600 mt-1">รถยนต์ (2x4 ม.)</span>
                     </div>
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🟫', 'โต๊ะทำงาน', 80, 40)">
-                        <span class="text-2xl">🟫</span>
-                        <span class="text-xs text-gray-600 mt-1">โต๊ะ (2x1 ม.)</span>
+                        <span class="text-2xl">🟫</span><span class="text-xs text-gray-600 mt-1">โต๊ะ (2x1 ม.)</span>
                     </div>
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🪑', 'เก้าอี้', 40, 40)">
-                        <span class="text-2xl">🪑</span>
-                        <span class="text-xs text-gray-600 mt-1">เก้าอี้ (1x1 ม.)</span>
+                        <span class="text-2xl">🪑</span><span class="text-xs text-gray-600 mt-1">เก้าอี้ (1x1 ม.)</span>
                     </div>
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🪜', 'บันได', 40, 120)">
-                        <span class="text-2xl">🪜</span>
-                        <span class="text-xs text-gray-600 mt-1">บันได (1x3 ม.)</span>
+                        <span class="text-2xl">🪜</span><span class="text-xs text-gray-600 mt-1">บันได (1x3 ม.)</span>
                     </div>
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🌳', 'ต้นไม้', 80, 80)">
-                        <span class="text-2xl">🌳</span>
-                        <span class="text-xs text-gray-600 mt-1">ต้นไม้ (2x2 ม.)</span>
+                        <span class="text-2xl">🌳</span><span class="text-xs text-gray-600 mt-1">ต้นไม้ (2x2 ม.)</span>
                     </div>
                     <div class="draggable-object p-2 bg-slate-50 border border-gray-200 rounded text-center flex flex-col items-center hover:shadow" draggable="true" ondragstart="drag(event, '🛏️', 'เตียงนอน', 80, 80)">
-                        <span class="text-2xl">🛏️</span>
-                        <span class="text-xs text-gray-600 mt-1">เตียง (2x2 ม.)</span>
+                        <span class="text-2xl">🛏️</span><span class="text-xs text-gray-600 mt-1">เตียง (2x2 ม.)</span>
                     </div>
                 </div>
-                <p class="text-[11px] text-gray-400 mt-2 text-center">*ลากไอเทมไปวางในตาราง / คลิกขวาเพื่อลบ</p>
             </div>
 
             <div class="mt-auto border-t pt-4">
                 <h2 class="font-bold text-gray-700 text-sm mb-2 text-center">🧭 ทิศทางแผนผัง</h2>
                 <div class="flex justify-center items-center flex-col">
-                    <div id="compass" class="w-20 h-20 border-4 border-indigo-600 rounded-full flex items-center justify-center relative font-bold text-xs bg-white transition-transform duration-300">
-                        <span class="absolute top-1 text-red-500">N</span>
-                        <span class="absolute bottom-1">S</span>
-                        <span class="absolute left-1">W</span>
-                        <span class="absolute right-1">E</span>
-                        <div class="w-1 h-8 bg-red-500 rounded-full transform -translate-y-1"></div>
+                    <div id="compass" class="w-16 h-16 border-4 border-indigo-600 rounded-full flex items-center justify-center relative font-bold text-xs bg-white transition-transform duration-300">
+                        <span class="absolute top-0.5 text-red-500">N</span>
+                        <span class="absolute bottom-0.5">S</span>
+                        <div class="w-0.5 h-6 bg-red-500 rounded-full transform -translate-y-0.5"></div>
                     </div>
                     <div class="flex gap-2 mt-2">
-                        <button onclick="rotateCompass(-45)" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">🔄 หมุนซ้าย</button>
-                        <button onclick="rotateCompass(45)" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 rounded text-xs">🔄 หมุนขวา</button>
+                        <button onclick="rotateCompass(-45)" class="px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs">🔄 ซ้าย</button>
+                        <button onclick="rotateCompass(45)" class="px-2 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-xs">🔄 ขวา</button>
                     </div>
                 </div>
             </div>
@@ -131,87 +120,126 @@
                         <p id="pdf-floor-label" class="text-sm text-gray-500 font-medium">มุมมอง: ชั้น 1</p>
                     </div>
                     <div class="text-right text-xs text-gray-400">
-                        <span>มาตราส่วน 1 ช่องตาราง = 1 ตารางเมตร (40px)</span>
+                        <span>มาตราส่วน 1 ช่องตาราง = 1 เมตร (40 พิกเซล)</span>
                     </div>
                 </div>
 
                 <div id="canvas-container" class="relative border-2 border-gray-400 bg-white grid-canvas w-[800px] h-[600px] overflow-hidden" ondrop="drop(event)" ondragover="allowDrop(event)">
-                    <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none"></svg>
-                    <div id="objects-layer-1" class="absolute inset-0 objects-layer"></div>
+                    <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 10;"></svg>
+                    <svg id="ruler-layer" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index: 20;"></svg>
+                    <div id="objects-layer-1" class="absolute inset-0 objects-layer" style="z-index: 5;"></div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let currentTool = 'select'; // โหมดปัจจุบัน: 'select', 'rect', 'circle'
+        let currentTool = 'select';
         let currentFloor = 1;
         let totalFloors = 1;
         let compassRotation = 0;
         
-        // ข้อมูลเก็บรูปทรงจำแนกตามชั้น เช่น { 1: [ {type:'rect', x, y, w, h} ] }
         let floorShapes = { 1: [] };
+        let floorRulers = { 1: [] }; // เก็บข้อมูลเส้นวัดขนาด
 
         const canvas = document.getElementById('canvas-container');
         const svgLayer = document.getElementById('svg-layer');
+        const rulerLayer = document.getElementById('ruler-layer');
 
-        // ฟังก์ชันเปลี่ยนเครื่องมือ
         function setTool(tool) {
             currentTool = tool;
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('border-indigo-600', 'bg-indigo-50'));
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('border-indigo-600', 'bg-indigo-50', 'border-rose-500', 'bg-rose-100'));
+            
             const activeBtn = document.getElementById(`btn-${tool}`);
-            if(activeBtn) activeBtn.classList.add('border-indigo-600', 'bg-indigo-50');
+            if(activeBtn) {
+                if(tool === 'ruler') {
+                    activeBtn.classList.add('border-rose-500', 'bg-rose-100');
+                } else {
+                    activeBtn.classList.add('border-indigo-600', 'bg-indigo-50');
+                }
+            }
         }
         setTool('select');
 
-        // --- ระบบวาดรูปทรง (สี่เหลี่ยม / วงกลม) ---
+        // --- ระบบวาดรูปทรงและไม้บรรทัดแบบอิสระ (Smooth Drag & Snap on Release) ---
         let isDrawing = false;
         let startX, startY;
-        let previewShape = null;
+        let previewElement = null;
+        let previewText = null;
 
         canvas.addEventListener('mousedown', (e) => {
             if (currentTool === 'select') return;
             isDrawing = true;
             const rect = canvas.getBoundingClientRect();
-            // Snap ทันทีเมื่อคลิกจุดเริ่มต้นลงล๊อคตาราง 40px
+            
+            // คลิกเริ่มวาดตรงไหน จุดเริ่มจะดึงเข้าล็อก (Snap) ตารางทันทีเพื่อความแม่นยำ
             startX = Math.round((e.clientX - rect.left) / 40) * 40;
             startY = Math.round((e.clientY - rect.top) / 40) * 40;
 
             if (currentTool === 'rect') {
-                previewShape = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                previewShape.setAttribute("fill", "rgba(99, 102, 241, 0.2)");
-                previewShape.setAttribute("stroke", "#4f46e5");
-                previewShape.setAttribute("stroke-width", "3");
+                previewElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                previewElement.setAttribute("fill", "rgba(99, 102, 241, 0.2)");
+                previewElement.setAttribute("stroke", "#4f46e5");
+                previewElement.setAttribute("stroke-width", "3");
+                svgLayer.appendChild(previewElement);
             } else if (currentTool === 'circle') {
-                previewShape = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                previewShape.setAttribute("fill", "rgba(234, 179, 8, 0.2)");
-                previewShape.setAttribute("stroke", "#ca8a04");
-                previewShape.setAttribute("stroke-width", "3");
+                previewElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                previewElement.setAttribute("fill", "rgba(234, 179, 8, 0.2)");
+                previewElement.setAttribute("stroke", "#ca8a04");
+                previewElement.setAttribute("stroke-width", "3");
+                svgLayer.appendChild(previewElement);
+            } else if (currentTool === 'ruler') {
+                // สร้างเส้นตลับเมตรวัดระยะ
+                previewElement = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                previewElement.setAttribute("stroke", "#f43f5e");
+                previewElement.setAttribute("stroke-width", "2");
+                previewElement.setAttribute("stroke-dasharray", "4");
+                
+                previewText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                previewText.setAttribute("fill", "#e11d48");
+                previewText.setAttribute("font-weight", "bold");
+                previewText.setAttribute("font-size", "14");
+                
+                rulerLayer.appendChild(previewElement);
+                rulerLayer.appendChild(previewText);
             }
-            svgLayer.appendChild(previewShape);
         });
 
         canvas.addEventListener('mousemove', (e) => {
             if (!isDrawing) return;
             const rect = canvas.getBoundingClientRect();
-            // Snap จุดปลายลงล๊อคตารางเช่นกัน
-            let currentX = Math.round((e.clientX - rect.left) / 40) * 40;
-            let currentY = Math.round((e.clientY - rect.top) / 40) * 40;
+            
+            // ขณะลากเมาส์ จะให้เคลื่อนที่แบบอิสระไม่กระตุก (ยังไม่ Snap ตาราง)
+            let currentX = e.clientX - rect.left;
+            let currentY = e.clientY - rect.top;
 
             if (currentTool === 'rect') {
                 let x = Math.min(startX, currentX);
                 let y = Math.min(startY, currentY);
                 let w = Math.abs(startX - currentX);
                 let h = Math.abs(startY - currentY);
-                previewShape.setAttribute("x", x);
-                previewShape.setAttribute("y", y);
-                previewShape.setAttribute("width", w);
-                previewShape.setAttribute("height", h);
+                previewElement.setAttribute("x", x);
+                previewElement.setAttribute("y", y);
+                previewElement.setAttribute("width", w);
+                previewElement.setAttribute("height", h);
             } else if (currentTool === 'circle') {
                 let r = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
-                previewShape.setAttribute("cx", startX);
-                previewShape.setAttribute("cy", startY);
-                previewShape.setAttribute("r", r);
+                previewElement.setAttribute("cx", startX);
+                previewElement.setAttribute("cy", startY);
+                previewElement.setAttribute("r", r);
+            } else if (currentTool === 'ruler') {
+                previewElement.setAttribute("x1", startX);
+                previewElement.setAttribute("y1", startY);
+                previewElement.setAttribute("x2", currentX);
+                previewElement.setAttribute("y2", currentY);
+                
+                // คำนวณระยะทางแบบ Real-time (40 พิกเซล = 1 เมตร)
+                let pixelDist = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                let meterDist = (pixelDist / 40).toFixed(2);
+                
+                previewText.textContent = `📏 ${meterDist} ม.`;
+                previewText.setAttribute("x", (startX + currentX) / 2 + 10);
+                previewText.setAttribute("y", (startY + currentY) / 2 - 10);
             }
         });
 
@@ -219,32 +247,89 @@
             if (!isDrawing) return;
             isDrawing = false;
             const rect = canvas.getBoundingClientRect();
-            let currentX = Math.round((e.clientX - rect.left) / 40) * 40;
-            let currentY = Math.round((e.clientY - rect.top) / 40) * 40;
-
-            let shapeData = { type: currentTool };
+            
+            // เมื่อปล่อยเมาส์ ระบบจะดึงเข้าล๊อคตารางตารางเมตร (Snap) ให้ทันทีโดยอัตโนมัติ
+            let finalX = Math.round((e.clientX - rect.left) / 40) * 40;
+            let finalY = Math.round((e.clientY - rect.top) / 40) * 40;
 
             if (currentTool === 'rect') {
-                shapeData.x = Math.min(startX, currentX);
-                shapeData.y = Math.min(startY, currentY);
-                shapeData.w = Math.abs(startX - currentX);
-                shapeData.h = Math.abs(startY - currentY);
+                let shapeData = {
+                    type: 'rect',
+                    x: Math.min(startX, finalX),
+                    y: Math.min(startY, finalY),
+                    w: Math.abs(startX - finalX),
+                    h: Math.abs(startY - finalY)
+                };
+                if (shapeData.w > 0 && shapeData.h > 0) floorShapes[currentFloor].push(shapeData);
+                previewElement.remove();
+                drawShapes();
             } else if (currentTool === 'circle') {
-                shapeData.cx = startX;
-                shapeData.cy = startY;
-                shapeData.r = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
-            }
-
-            if ((shapeData.w > 0 || shapeData.h > 0) || shapeData.r > 0) {
-                floorShapes[currentFloor].push(shapeData);
+                let r = Math.round(Math.sqrt(Math.pow(finalX - startX, 2) + Math.pow(finalY - startY, 2)) / 40) * 40;
+                let shapeData = { type: 'circle', cx: startX, cy: startY, r: r };
+                if (r > 0) floorShapes[currentFloor].push(shapeData);
+                previewElement.remove();
+                drawShapes();
+            } else if (currentTool === 'ruler') {
+                // บันทึกเส้นวัดขนาดที่ลงล็อกตารางสวยงาม
+                let pixelDist = Math.sqrt(Math.pow(finalX - startX, 2) + Math.pow(finalY - startY, 2));
+                let meterDist = (pixelDist / 40).toFixed(1); // ปัดเศษให้สวยงามตามช่องเมตร
+                
+                if (pixelDist > 0) {
+                    if (!floorRulers[currentFloor]) floorRulers[currentFloor] = [];
+                    floorRulers[currentFloor].push({
+                        x1: startX, y1: startY, x2: finalX, y2: finalY, text: `${meterDist} ม.`
+                    });
+                }
+                previewElement.remove();
+                previewText.remove();
+                drawRulers();
             }
             
-            previewShape.remove();
-            drawShapes();
-            setTool('select'); // วาดเสร็จเด้งกลับมาโหมดเลือกวัตถุอัตโนมัติเพื่อความสะดวก
+            setTool('select'); // เด้งกลับมาโหมดเลือกจับย้ายวัตถุอัตโนมัติ
         });
 
-        // ฟังก์ชันวาดรูปทรงทั้งหมดของชั้นปัจจุบันลง SVG
+        // ฟังก์ชันวาดเส้นวัดขนาดทั้งหมดในชั้นนั้นๆ
+        function drawRulers() {
+            rulerLayer.innerHTML = '';
+            const rulers = floorRulers[currentFloor] || [];
+            rulers.forEach((r, idx) => {
+                // วาดเส้นบรรทัด
+                let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", r.x1); line.setAttribute("y1", r.y1);
+                line.setAttribute("x2", r.x2); line.setAttribute("y2", r.y2);
+                line.setAttribute("stroke", "#e11d48");
+                line.setAttribute("stroke-width", "2");
+                
+                // วาดหัวลูกศร/ขีดจำกัดเขตเส้น A และ B
+                let startDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                startDot.setAttribute("cx", r.x1); startDot.setAttribute("cy", r.y1); startDot.setAttribute("r", "4"); startDot.setAttribute("fill", "#e11d48");
+                
+                let endDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                endDot.setAttribute("cx", r.x2); endDot.setAttribute("cy", r.y2); endDot.setAttribute("r", "4"); endDot.setAttribute("fill", "#e11d48");
+
+                // วาดตัวเลขบอกระยะทางเมตร
+                let txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                txt.textContent = `📏 ${r.text}`;
+                txt.setAttribute("x", (r.x1 + r.x2) / 2 + 8);
+                txt.setAttribute("y", (r.y1 + r.y2) / 2 - 8);
+                txt.setAttribute("fill", "#b91c1c");
+                txt.setAttribute("font-weight", "bold");
+                txt.setAttribute("font-size", "12");
+
+                rulerLayer.appendChild(line);
+                rulerLayer.appendChild(startDot);
+                rulerLayer.appendChild(endDot);
+                rulerLayer.appendChild(txt);
+            });
+        }
+
+        // ฟังก์ชันล้างไม้บรรทัดวัดระยะทั้งหมดออกไป
+        function clearRulers() {
+            floorRulers[currentFloor] = [];
+            drawRulers();
+        }
+
+        // วาดรูปทรงห้อง/ผนัง
         function drawShapes() {
             svgLayer.innerHTML = '';
             const shapes = floorShapes[currentFloor] || [];
@@ -252,25 +337,20 @@
                 let el;
                 if (shape.type === 'rect') {
                     el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                    el.setAttribute("x", shape.x);
-                    el.setAttribute("y", shape.y);
-                    el.setAttribute("width", shape.w);
-                    el.setAttribute("height", shape.h);
-                    el.setAttribute("fill", "rgba(99, 102, 241, 0.15)");
+                    el.setAttribute("x", shape.x); el.setAttribute("y", shape.y);
+                    el.setAttribute("width", shape.w); el.setAttribute("height", shape.h);
+                    el.setAttribute("fill", "rgba(99, 102, 241, 0.12)");
                     el.setAttribute("stroke", "#4f46e5");
                 } else {
                     el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    el.setAttribute("cx", shape.cx);
-                    el.setAttribute("cy", shape.cy);
-                    el.setAttribute("r", shape.r);
-                    el.setAttribute("fill", "rgba(234, 179, 8, 0.15)");
+                    el.setAttribute("cx", shape.cx); el.setAttribute("cy", shape.cy); el.setAttribute("r", shape.r);
+                    el.setAttribute("fill", "rgba(234, 179, 8, 0.12)");
                     el.setAttribute("stroke", "#ca8a04");
                 }
                 el.setAttribute("stroke-width", "3");
                 el.style.pointerEvents = "auto";
                 el.style.cursor = "context-menu";
                 
-                // คลิกขวาที่รูปทรงเพื่อลบออก
                 el.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     if(confirm("ต้องการลบโครงสร้างนี้ใช่หรือไม่?")) {
@@ -282,41 +362,30 @@
             });
         }
 
-        // --- ระบบ Drag & Drop Object เฟอร์นิเจอร์ ---
+        // --- ระบบ Drag & Drop วัตถุ ---
         function drag(ev, emoji, name, width, height) {
             ev.dataTransfer.setData("text/plain", JSON.stringify({ emoji, name, width, height }));
         }
-
-        function allowDrop(ev) {
-            ev.preventDefault();
-        }
-
+        function allowDrop(ev) { ev.preventDefault(); }
         function drop(ev) {
             ev.preventDefault();
             const rect = canvas.getBoundingClientRect();
-            // Snap ตำแหน่งวางลงล๊อคตารางเมตร (40px)
             const x = Math.round((ev.clientX - rect.left - 20) / 40) * 40;
             const y = Math.round((ev.clientY - rect.top - 20) / 40) * 40;
-            
             const dataStr = ev.dataTransfer.getData("text/plain");
             if(!dataStr) return;
             const data = JSON.parse(dataStr);
-
             createPlacedObject(data.emoji, data.name, x, y, data.width, data.height);
         }
 
-        // ฟังก์ชันสร้าง Object เฟอร์นิเจอร์ลงบนกระดาน
         function createPlacedObject(emoji, name, x, y, width, height) {
             const currentLayer = document.getElementById(`objects-layer-${currentFloor}`);
             const obj = document.createElement('div');
             obj.className = 'placed-object flex flex-col items-center justify-center bg-white/80 border border-slate-400 rounded shadow-sm text-center p-1';
-            obj.style.left = `${x}px`;
-            obj.style.top = `${y}px`;
-            obj.style.width = `${width}px`;
-            obj.style.height = `${height}px`;
+            obj.style.left = `${x}px`; obj.style.top = `${y}px`;
+            obj.style.width = `${width}px`; obj.style.height = `${height}px`;
             obj.innerHTML = `<span style="font-size: ${Math.min(width, height)*0.5}px">${emoji}</span><span class="text-[9px] font-bold text-gray-700 truncate w-full">${name}</span>`;
             
-            // ทำให้วัตถุที่วางแล้วสามารถลากย้ายตำแหน่งต่อได้ในโหมด Select
             obj.addEventListener('mousedown', function(e) {
                 if(currentTool !== 'select') return;
                 e.stopPropagation();
@@ -327,43 +396,35 @@
                     const canvasRect = canvas.getBoundingClientRect();
                     let nx = Math.round((clientX - canvasRect.left - shiftX) / 40) * 40;
                     let ny = Math.round((clientY - canvasRect.top - shiftY) / 40) * 40;
-                    
-                    // ป้องกันไม่ให้ออกนอกขอบตาราง
                     if(nx >= 0 && nx <= canvasRect.width - width) obj.style.left = nx + 'px';
                     if(ny >= 0 && ny <= canvasRect.height - height) obj.style.top = ny + 'px';
                 }
-
                 function onMouseMove(e) { moveAt(e.clientX, e.clientY); }
                 document.addEventListener('mousemove', onMouseMove);
-                
                 document.onmouseup = function() {
                     document.removeEventListener('mousemove', onMouseMove);
                     document.onmouseup = null;
                 };
             });
 
-            // คลิกขวาที่เฟอร์นิเจอร์เพื่อทำการลบ
             obj.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 if(confirm(`ต้องการลบ ${name} ใช่หรือไม่?`)) obj.remove();
             });
-
             currentLayer.appendChild(obj);
         }
 
-        // --- ระบบจัดการชั้น (Floor Management) ---
+        // --- ระบบสลับชั้นบ้าน ---
         function addFloor() {
             totalFloors++;
-            floorShapes[totalFloors] = []; // สร้างถังเก็บรูปทรงชั้นใหม่
+            floorShapes[totalFloors] = [];
+            floorRulers[totalFloors] = [];
             
-            // เพิ่มตัวเลือกใน Dropdown
             const select = document.getElementById('floorSelect');
             const opt = document.createElement('option');
-            opt.value = totalFloors;
-            opt.textContent = `ชั้น ${totalFloors}`;
+            opt.value = totalFloors; opt.textContent = `ชั้น ${totalFloors}`;
             select.appendChild(opt);
             
-            // สร้าง Layer เก็บ Object สำหรับชั้นใหม่
             const newLayer = document.createElement('div');
             newLayer.id = `objects-layer-${totalFloors}`;
             newLayer.className = 'absolute inset-0 objects-layer hidden';
@@ -377,32 +438,27 @@
             currentFloor = parseInt(document.getElementById('floorSelect').value);
             document.getElementById('pdf-floor-label').textContent = `มุมมอง: ชั้น ${currentFloor}`;
             
-            // ซ่อน Layer วัตถุของชั้นอื่น และแสดงของชั้นปัจจุบัน
             document.querySelectorAll('.objects-layer').forEach(layer => layer.classList.add('hidden'));
             document.getElementById(`objects-layer-${currentFloor}`).classList.remove('hidden');
             
-            // วาดรูปทรงโครงสร้างใหม่ตามชั้นที่เปลี่ยน
             drawShapes();
+            drawRulers();
         }
 
-        // --- ระบบเข็มทิศหมุนปรับทิศ ---
         function rotateCompass(deg) {
             compassRotation += deg;
             document.getElementById('compass').style.transform = `rotate(${compassRotation}deg)`;
         }
 
-        // --- ระบบ Export แปลนบ้านเป็น PDF ---
         function exportToPDF() {
             const element = document.getElementById('print-area');
             const options = {
                 margin:       0.2,
-                filename:     `แปลนบ้าน_ชั้น_${currentFloor}.pdf`,
+                filename:     `แปลanบ้าน_ชั้น_${currentFloor}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
             };
-            
-            // ดำเนินการสร้างและดาวน์โหลดไฟล์ PDF
             html2pdf().set(options).from(element).save();
         }
     </script>
